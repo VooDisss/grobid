@@ -832,7 +832,7 @@ export default function DockerBuilder(): React.ReactElement {
         </div>
         <div className={styles.row}>
           <span className={`${styles.rowLabel} ${styles.rowLabelTip}`} data-tip={TOOLTIPS.nameLabel}>Name</span>
-          <input type="text" value={containerName} onChange={(e) => setContainerName(e.target.value.replace(/[^a-zA-Z0-9_.-]/g, ''))} className={styles.textInput} style={{width: 150}} placeholder="grobid" />
+          <input type="text" value={containerName} onChange={(e) => setContainerName(e.target.value.replace(/[^a-zA-Z0-9_.-]/g, ''))} className={styles.textInput} style={{width: 150}} placeholder={image === 'full' ? 'Grobid-Full' : 'Grobid-CRF'} />
         </div>
         {!(!mountPdfs || pdfsPath) && <div className={`${styles.row} ${styles.rowNoWrap}`}>
           <span className={`${styles.rowLabel} ${styles.rowLabelTip}`} data-tip={TOOLTIPS.hostPathLabel}>{LABELS.hostPath}</span>
