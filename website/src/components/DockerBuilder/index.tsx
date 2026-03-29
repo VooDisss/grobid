@@ -2,11 +2,12 @@ import React, {useState, useMemo, useRef, useEffect} from 'react';
 import styles from './styles.module.css';
 import {
   LABELS, OS_LABELS, IMAGE_LABELS, SOURCE_LABELS, GPU_LABELS, CONSOL_LABELS, SHELL_LABELS,
-  OPTION_LABELS, MEMORY_HINTS, FLAG_HINTS, PILL_TIPS, TOOLTIPS, ALERTS,
+  OPTION_LABELS, FLAG_HINTS, PILL_TIPS, TOOLTIPS, ALERTS,
 } from './i18n';
 
 import { winPathToWsl, winPathNative } from './pathUtils';
 import { GROBID_CRF_BASE_CONFIG, GROBID_FULL_BASE_CONFIG } from '../../generated/dockerBaseConfigs';
+import { buildProbeScript, estimateRecommendedMemory, parseCorpusProfile, type ProbeKind } from './corpusProbe';
 
 type OS = 'windows-wsl2' | 'linux-x86' | 'linux-arm64' | 'macos-as' | 'macos-intel';
 type Source = 'lfoppiano' | 'grobid';
@@ -43,6 +44,11 @@ export default function DockerBuilder(): React.ReactElement {
   const [configPath, setConfigPath] = useState('');
   const [pdfsPath, setPdfsPath] = useState('');
   const [shell, setShell] = useState<Shell>('powershell');
+  const [probeKind, setProbeKind] = useState<ProbeKind>('python');
+  const [probeRecursive, setProbeRecursive] = useState(true);
+  const [probeJson, setProbeJson] = useState('');
+  const [probeExpanded, setProbeExpanded] = useState(false);
+  const [probePath, setProbePath] = useState('');
   const [hydrated, setHydrated] = useState(false);
   const [resetTick, setResetTick] = useState(0);
 
@@ -83,6 +89,10 @@ export default function DockerBuilder(): React.ReactElement {
       if (typeof data.configPath === 'string') setConfigPath(data.configPath);
       if (typeof data.pdfsPath === 'string') setPdfsPath(data.pdfsPath);
       if (data.shell) setShell(data.shell);
+      if (typeof data.probePath === 'string') setProbePath(data.probePath);
+      if (data.probeKind) setProbeKind(data.probeKind);
+      if (typeof data.probeRecursive === 'boolean') setProbeRecursive(data.probeRecursive);
+      if (typeof data.probeExpanded === 'boolean') setProbeExpanded(data.probeExpanded);
     } catch {
       // ignore malformed storage
     } finally {
@@ -97,14 +107,15 @@ export default function DockerBuilder(): React.ReactElement {
       mountPdfs, autoRemove, detach, allocTty, nonRoot,
       adminPort, adminHostPort, containerName,
       consolService, gluttonUrl, crossrefEmail,
-      hostPath, configPath, pdfsPath, shell,
+      hostPath, configPath, pdfsPath, shell, probePath,
+      probeKind, probeRecursive, probeExpanded,
     };
     try {
       window.localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
     } catch {
       // ignore storage errors
     }
-  }, [hydrated, os, source, image, gpu, memory, port, mountPdfs, autoRemove, detach, allocTty, nonRoot, adminPort, adminHostPort, containerName, consolService, gluttonUrl, crossrefEmail, hostPath, configPath, pdfsPath, shell]);
+  }, [hydrated, os, source, image, gpu, memory, port, mountPdfs, autoRemove, detach, allocTty, nonRoot, adminPort, adminHostPort, containerName, consolService, gluttonUrl, crossrefEmail, hostPath, configPath, pdfsPath, shell, probePath, probeKind, probeRecursive, probeExpanded]);
 
   const resetAll = () => {
     if (typeof window !== 'undefined') {
@@ -135,6 +146,10 @@ export default function DockerBuilder(): React.ReactElement {
     setConfigPath('');
     setPdfsPath('');
     setShell('powershell');
+    setProbePath('');
+    setProbeKind('python');
+    setProbeRecursive(true);
+    setProbeExpanded(false);
     setResetTick((v) => v + 1);
   };
 
@@ -320,6 +335,12 @@ export default function DockerBuilder(): React.ReactElement {
     setCopiedOpen(true);
     setTimeout(() => setCopiedOpen(false), 2000);
   };
+  const [copiedProbeScript, setCopiedProbeScript] = useState(false);
+  const copyProbeScript = () => {
+    navigator.clipboard.writeText(probeScript);
+    setCopiedProbeScript(true);
+    setTimeout(() => setCopiedProbeScript(false), 2000);
+  };
   const [copiedSave, setCopiedSave] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement | null>(null);
@@ -425,10 +446,9 @@ export default function DockerBuilder(): React.ReactElement {
     </button>
   );
 
-  const memHint = memory < 4 ? MEMORY_HINTS.tooLow
-    : memory <= 8 ? MEMORY_HINTS.singleDocs
-    : memory <= 16 ? MEMORY_HINTS.batchOk
-    : MEMORY_HINTS.production;
+  const probeScript = useMemo(() => buildProbeScript(probeKind, probeRecursive, probePath, isWindows ? shell : 'bash'), [probeKind, probeRecursive, probePath, isWindows, shell]);
+  const parsedProbe = useMemo(() => parseCorpusProfile(probeJson), [probeJson]);
+  const probeEstimate = useMemo(() => parsedProbe ? estimateRecommendedMemory(parsedProbe, image, 2) : null, [parsedProbe, image]);
 
   const alerts: React.ReactNode[] = [];
 
@@ -544,9 +564,60 @@ export default function DockerBuilder(): React.ReactElement {
         <div className={styles.sliderRow}>
           <input type="range" min={2} max={32} step={1} value={memory} onChange={(e) => setMemory(Number(e.target.value))} className={styles.slider} />
           <span className={`${styles.sliderVal} ${memory < 4 ? styles.sliderWarn : ''}`}>{memory} GB</span>
-          <span className={styles.sliderHint}>{memHint}</span>
+          {tog('Estimate from corpus', probeExpanded, () => setProbeExpanded(!probeExpanded))}
         </div>
       </div>
+
+      {probeExpanded && (
+        <div className={`${styles.advanced} ${styles.enterPanel}`}>
+          <div className={`${styles.advancedHeader} ${styles.rowLabelTip}`} data-tip={TOOLTIPS.corpusProbeLabel}>{LABELS.corpusProbe}</div>
+          <div className={styles.row}>
+            <span className={styles.rowLabel}>Type</span>
+            <div className={styles.pills}>
+              {pill('python', probeKind, 'Python', () => setProbeKind('python'), false, true)}
+              {pill('powershell', probeKind, 'PowerShell', () => setProbeKind('powershell'))}
+              {pill('bash', probeKind, 'Bash', () => setProbeKind('bash'))}
+            </div>
+          </div>
+          <div className={styles.row}>
+            <span className={styles.rowLabel}>Scope</span>
+            <div className={styles.toggles}>
+              {tog('Recursive', probeRecursive, () => setProbeRecursive(!probeRecursive))}
+            </div>
+          </div>
+          <div className={`${styles.row} ${styles.rowNoWrap}`}>
+            <span className={styles.rowLabel}>Path</span>
+            <div className={styles.inlineField}>
+              <input
+                type="text"
+                value={probePath}
+                onChange={(e) => setProbePath(e.target.value)}
+                className={`${styles.textInput} ${styles.pathInput}`}
+                onBlur={(e) => keepPathTailVisible(e.currentTarget)}
+                ref={keepPathTailVisible}
+                placeholder="Leave empty to use current folder"
+              />
+            </div>
+          </div>
+          <details className={styles.builderDetails}>
+            <summary>
+              <span>Show generated script</span>
+              <button className={styles.copyBtn} onClick={(e) => { e.preventDefault(); copyProbeScript(); }} type="button">{copiedProbeScript ? LABELS.copied : LABELS.copyScript}</button>
+            </summary>
+            <pre className={styles.commandPre}><code>{probeScript}</code></pre>
+          </details>
+          <div className={styles.row}>
+            <span className={styles.rowLabel}>{LABELS.pasteProbe}</span>
+            <textarea value={probeJson} onChange={(e) => setProbeJson(e.target.value)} className={styles.textInput} rows={4} placeholder='{"version":1,"mode":"better",...}' />
+          </div>
+          {probeEstimate && (
+            <div className={`${styles.alert} ${styles.alertInfo}`}>
+              <span className={styles.alertIcon}>{'\u2139'}</span>
+              <p><strong>Estimated memory:</strong> start at <strong>{probeEstimate.recommended} GB</strong>. Safe range: {probeEstimate.min}-{probeEstimate.max} GB. {probeEstimate.rationale}</p>
+            </div>
+          )}
+        </div>
+      )}
 
       <div className={styles.row}>
         <span className={styles.rowLabel}>{LABELS.options}</span>

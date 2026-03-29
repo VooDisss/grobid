@@ -7,11 +7,14 @@ export const LABELS = {
   options: 'Options',
   consolLabel: 'Consol.',
   advanced: 'Advanced',
+  corpusProbe: 'Corpus memory estimate',
   port: 'Port',
   hostPath: 'Base path',
   gluttonUrl: 'Glutton URL',
   email: 'Email',
   yourCommand: 'Your command',
+  copyScript: 'Copy script',
+  pasteProbe: 'Paste probe JSON',
   copy: 'Copy',
   copied: '\u2713 Copied',
   flags: 'Flags:',
@@ -113,6 +116,9 @@ export const PILL_TIPS: Record<string, string> = {
 };
 
 export const TOOLTIPS: Record<string, string> = {
+  corpusProbeLabel:
+    'Optional: estimate a safer Docker memory limit from a representative sample of your PDFs. ' +
+    'Run one of the generated scripts inside your corpus folder, paste the JSON output here, and the builder will suggest a starting --memory value for the current image and concurrency.',
   gpuLabel:
     'GPU acceleration is ONLY used by the Full (DL) image for DeLFT deep learning model inference. ' +
     'CRF models (Wapiti) are CPU-only and do not benefit from GPU at all. ' +

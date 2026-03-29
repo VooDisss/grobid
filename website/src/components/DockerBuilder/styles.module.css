@@ -337,6 +337,33 @@
   border-top: 1px dashed var(--ifm-color-emphasis-200);
 }
 
+.enterPanel {
+  animation: panelReveal 220ms ease-out, panelHighlight 700ms ease-out;
+  transform-origin: top center;
+}
+
+@keyframes panelReveal {
+  from {
+    opacity: 0;
+    transform: translateY(-8px) scaleY(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scaleY(1);
+  }
+}
+
+@keyframes panelHighlight {
+  from {
+    background: color-mix(in srgb, var(--ifm-color-primary) 12%, transparent);
+    box-shadow: 0 0 0 1px color-mix(in srgb, var(--ifm-color-primary) 35%, transparent);
+  }
+  to {
+    background: transparent;
+    box-shadow: 0 0 0 1px transparent;
+  }
+}
+
 .advancedHeader {
   font-size: 0.75rem;
   font-weight: 700;
@@ -471,6 +498,17 @@
   align-items: center;
   justify-content: space-between;
   gap: 8px;
+  padding: 8px 10px;
+  margin: 0 -4px;
+  border: 1px solid var(--ifm-color-emphasis-200);
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--ifm-background-surface-color) 88%, var(--ifm-color-primary) 12%);
+  transition: background 160ms ease, border-color 160ms ease;
+}
+
+.builderDetails summary:hover {
+  background: color-mix(in srgb, var(--ifm-background-surface-color) 82%, var(--ifm-color-primary) 18%);
+  border-color: color-mix(in srgb, var(--ifm-color-primary) 35%, var(--ifm-color-emphasis-200));
 }
 
 .flagHintsLabel {
