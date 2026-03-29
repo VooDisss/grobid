@@ -487,6 +487,7 @@
 .builderDetails {
   border-top: 1px solid var(--ifm-color-emphasis-200);
   padding: 8px 12px 0;
+  margin-bottom: 2px;
 }
 
 .builderDetails summary {
@@ -504,6 +505,7 @@
   border-radius: 8px;
   background: color-mix(in srgb, var(--ifm-background-surface-color) 88%, var(--ifm-color-primary) 12%);
   transition: background 160ms ease, border-color 160ms ease;
+  margin-bottom: 2px;
 }
 
 .builderDetails summary:hover {
@@ -659,4 +661,195 @@
 .menuItemDanger:hover {
   background: rgba(220, 38, 38, 0.16);
   color: #991b1b;
+}
+
+.estimateCard {
+  margin-top: 0.5rem;
+  margin-bottom: 0.5rem;
+  border: 1px solid var(--ifm-color-emphasis-200);
+  border-radius: 10px;
+  overflow: hidden;
+  background: var(--ifm-background-surface-color);
+}
+
+.estimateCardHeader {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 7px 12px;
+  background: color-mix(in srgb, var(--ifm-background-surface-color) 86%, var(--ifm-color-primary) 14%);
+  border: none;
+  color: var(--ifm-font-color-base);
+  cursor: pointer;
+  text-align: left;
+}
+
+.estimateCardHeader:hover {
+  background: color-mix(in srgb, var(--ifm-background-surface-color) 80%, var(--ifm-color-primary) 20%);
+}
+
+.estimateTitle {
+  font-size: 0.8rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--ifm-color-emphasis-700);
+}
+
+.estimateSummary {
+  margin-left: auto;
+  display: inline-flex;
+  align-items: baseline;
+  gap: 8px;
+  font-size: 0.82rem;
+}
+
+.estimateRange {
+  color: var(--ifm-color-emphasis-600);
+  font-size: 0.74rem;
+}
+
+.estimateChevron {
+  font-size: 0.9rem;
+  color: var(--ifm-color-emphasis-600);
+}
+
+.estimateHeaderActions {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.estimateInfoBtn {
+  width: 20px;
+  height: 20px;
+  border-radius: 999px;
+  border: 1px solid var(--ifm-color-emphasis-300);
+  background: var(--ifm-background-surface-color);
+  color: var(--ifm-color-emphasis-700);
+  font-size: 0.75rem;
+  font-weight: 700;
+  line-height: 1;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.estimateInfoBtn:hover {
+  border-color: var(--ifm-color-primary);
+  color: var(--ifm-color-primary);
+}
+
+.estimateBody {
+  padding: 8px 12px 10px;
+  border-top: 1px solid var(--ifm-color-emphasis-200);
+  animation: panelReveal 220ms ease-out;
+}
+
+.estimateInfoBox {
+  border: 1px solid var(--ifm-color-emphasis-200);
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--ifm-background-surface-color) 90%, var(--ifm-color-primary) 10%);
+  padding: 8px 10px;
+  margin-bottom: 8px;
+}
+
+.estimateInfoTitle {
+  font-size: 0.74rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--ifm-color-emphasis-700);
+  margin-bottom: 4px;
+}
+
+.estimateInfoBox p {
+  margin: 0 0 6px;
+  font-size: 0.76rem;
+  line-height: 1.45;
+}
+
+.estimateInfoBox p:last-child {
+  margin-bottom: 0;
+}
+
+.estimateInfoList {
+  margin: 0 0 6px;
+  padding-left: 18px;
+  font-size: 0.76rem;
+}
+
+.estimateInfoList li {
+  margin: 0 0 2px;
+}
+
+.chartTitle {
+  font-size: 0.76rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--ifm-color-emphasis-600);
+  margin-bottom: 4px;
+}
+
+.memoryChart {
+  width: 100%;
+  height: auto;
+  display: block;
+}
+
+.chartAxisLabel {
+  fill: var(--ifm-color-emphasis-700);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.chartBar {
+  fill: color-mix(in srgb, var(--ifm-color-primary) 28%, var(--ifm-background-surface-color));
+}
+
+.chartBarActive {
+  fill: var(--ifm-color-primary);
+}
+
+.chartValue {
+  fill: var(--ifm-color-emphasis-700);
+  font-size: 12px;
+}
+
+.chartValueActive {
+  fill: var(--ifm-color-primary);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.statsGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(118px, 1fr));
+  gap: 6px;
+  padding-top: 6px;
+}
+
+.statsGrid div {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  padding: 6px 8px;
+  border: 1px solid var(--ifm-color-emphasis-200);
+  border-radius: 6px;
+  background: color-mix(in srgb, var(--ifm-background-surface-color) 90%, var(--ifm-color-primary) 10%);
+}
+
+.statsGrid span {
+  font-size: 0.66rem;
+  color: var(--ifm-color-emphasis-600);
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.statsGrid strong {
+  font-size: 0.82rem;
 }

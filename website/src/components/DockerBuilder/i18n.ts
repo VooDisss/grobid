@@ -14,7 +14,7 @@ export const LABELS = {
   email: 'Email',
   yourCommand: 'Your command',
   copyScript: 'Copy script',
-  pasteProbe: 'Paste probe JSON',
+  pasteProbe: 'Paste probe output JSON',
   copy: 'Copy',
   copied: '\u2713 Copied',
   flags: 'Flags:',
@@ -119,6 +119,11 @@ export const TOOLTIPS: Record<string, string> = {
   corpusProbeLabel:
     'Optional: estimate a safer Docker memory limit from a representative sample of your PDFs. ' +
     'Run one of the generated scripts inside your corpus folder, paste the JSON output here, and the builder will suggest a starting --memory value for the current image and concurrency.',
+  corpusPathLabel:
+    'Root folder of the PDF corpus you want to profile. ' +
+    'Point this to the top-level directory containing your research PDFs. ' +
+    'If Recursive is enabled, the probe scans PDFs in subfolders too. ' +
+    'If left empty, the generated script uses the current working directory where you run it.',
   gpuLabel:
     'GPU acceleration is ONLY used by the Full (DL) image for DeLFT deep learning model inference. ' +
     'CRF models (Wapiti) are CPU-only and do not benefit from GPU at all. ' +

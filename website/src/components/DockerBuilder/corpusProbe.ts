@@ -185,3 +185,25 @@ export function estimateRecommendedMemory(profile: CorpusProfile, image: 'standa
 
   return { recommended, min, max, rationale };
 }
+
+export function estimateMemoryBreakdown(profile: CorpusProfile, image: 'standard' | 'full', concurrency: number): {
+  base: number;
+  sizeFactor: number;
+  pageFactor: number;
+  concurrencyFactor: number;
+  safety: number;
+  floor: number;
+  raw: number;
+  recommended: number;
+} | null {
+  if (!profile.filesSampled) return null;
+  const base = image === 'full' ? 10 : 4;
+  const sizeFactor = Math.max(0, Math.ceil((profile.p95SizeMb || 0) / 8));
+  const pageFactor = profile.p95Pages ? Math.max(0, Math.ceil(profile.p95Pages / 40)) : 0;
+  const concurrencyFactor = Math.max(0, Math.ceil(concurrency / (image === 'full' ? 2 : 3)) - 1);
+  const safety = image === 'full' ? 2 : 1;
+  const floor = image === 'full' ? 12 : 4;
+  const raw = base + sizeFactor + pageFactor + concurrencyFactor + safety;
+  const recommended = Math.max(floor, raw);
+  return { base, sizeFactor, pageFactor, concurrencyFactor, safety, floor, raw, recommended };
+}

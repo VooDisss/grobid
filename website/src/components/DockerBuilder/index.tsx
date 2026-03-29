@@ -7,7 +7,7 @@ import {
 
 import { winPathToWsl, winPathNative } from './pathUtils';
 import { GROBID_CRF_BASE_CONFIG, GROBID_FULL_BASE_CONFIG } from '../../generated/dockerBaseConfigs';
-import { buildProbeScript, estimateRecommendedMemory, parseCorpusProfile, type ProbeKind } from './corpusProbe';
+import { buildProbeScript, estimateMemoryBreakdown, estimateRecommendedMemory, parseCorpusProfile, type ProbeKind } from './corpusProbe';
 
 type OS = 'windows-wsl2' | 'linux-x86' | 'linux-arm64' | 'macos-as' | 'macos-intel';
 type Source = 'lfoppiano' | 'grobid';
@@ -49,6 +49,9 @@ export default function DockerBuilder(): React.ReactElement {
   const [probeJson, setProbeJson] = useState('');
   const [probeExpanded, setProbeExpanded] = useState(false);
   const [probePath, setProbePath] = useState('');
+  const [probeConcurrency, setProbeConcurrency] = useState(14);
+  const [probeEstimateExpanded, setProbeEstimateExpanded] = useState(false);
+  const [probeEstimateInfoOpen, setProbeEstimateInfoOpen] = useState(false);
   const [hydrated, setHydrated] = useState(false);
   const [resetTick, setResetTick] = useState(0);
 
@@ -90,9 +93,13 @@ export default function DockerBuilder(): React.ReactElement {
       if (typeof data.pdfsPath === 'string') setPdfsPath(data.pdfsPath);
       if (data.shell) setShell(data.shell);
       if (typeof data.probePath === 'string') setProbePath(data.probePath);
+      if (typeof data.probeJson === 'string') setProbeJson(data.probeJson);
       if (data.probeKind) setProbeKind(data.probeKind);
       if (typeof data.probeRecursive === 'boolean') setProbeRecursive(data.probeRecursive);
       if (typeof data.probeExpanded === 'boolean') setProbeExpanded(data.probeExpanded);
+      if (typeof data.probeConcurrency === 'number') setProbeConcurrency(data.probeConcurrency);
+      if (typeof data.probeEstimateExpanded === 'boolean') setProbeEstimateExpanded(data.probeEstimateExpanded);
+      if (typeof data.probeEstimateInfoOpen === 'boolean') setProbeEstimateInfoOpen(data.probeEstimateInfoOpen);
     } catch {
       // ignore malformed storage
     } finally {
@@ -107,15 +114,15 @@ export default function DockerBuilder(): React.ReactElement {
       mountPdfs, autoRemove, detach, allocTty, nonRoot,
       adminPort, adminHostPort, containerName,
       consolService, gluttonUrl, crossrefEmail,
-      hostPath, configPath, pdfsPath, shell, probePath,
-      probeKind, probeRecursive, probeExpanded,
+      hostPath, configPath, pdfsPath, shell, probePath, probeJson,
+      probeKind, probeRecursive, probeExpanded, probeConcurrency, probeEstimateExpanded, probeEstimateInfoOpen,
     };
     try {
       window.localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
     } catch {
       // ignore storage errors
     }
-  }, [hydrated, os, source, image, gpu, memory, port, mountPdfs, autoRemove, detach, allocTty, nonRoot, adminPort, adminHostPort, containerName, consolService, gluttonUrl, crossrefEmail, hostPath, configPath, pdfsPath, shell, probePath, probeKind, probeRecursive, probeExpanded]);
+  }, [hydrated, os, source, image, gpu, memory, port, mountPdfs, autoRemove, detach, allocTty, nonRoot, adminPort, adminHostPort, containerName, consolService, gluttonUrl, crossrefEmail, hostPath, configPath, pdfsPath, shell, probePath, probeJson, probeKind, probeRecursive, probeExpanded, probeConcurrency, probeEstimateExpanded, probeEstimateInfoOpen]);
 
   const resetAll = () => {
     if (typeof window !== 'undefined') {
@@ -147,9 +154,13 @@ export default function DockerBuilder(): React.ReactElement {
     setPdfsPath('');
     setShell('powershell');
     setProbePath('');
+    setProbeJson('');
     setProbeKind('python');
     setProbeRecursive(true);
     setProbeExpanded(false);
+    setProbeConcurrency(14);
+    setProbeEstimateExpanded(false);
+    setProbeEstimateInfoOpen(false);
     setResetTick((v) => v + 1);
   };
 
@@ -448,7 +459,22 @@ export default function DockerBuilder(): React.ReactElement {
 
   const probeScript = useMemo(() => buildProbeScript(probeKind, probeRecursive, probePath, isWindows ? shell : 'bash'), [probeKind, probeRecursive, probePath, isWindows, shell]);
   const parsedProbe = useMemo(() => parseCorpusProfile(probeJson), [probeJson]);
-  const probeEstimate = useMemo(() => parsedProbe ? estimateRecommendedMemory(parsedProbe, image, 2) : null, [parsedProbe, image]);
+  const probeEstimate = useMemo(() => parsedProbe ? estimateRecommendedMemory(parsedProbe, image, probeConcurrency) : null, [parsedProbe, image, probeConcurrency]);
+  const probeBreakdown = useMemo(() => parsedProbe ? estimateMemoryBreakdown(parsedProbe, image, probeConcurrency) : null, [parsedProbe, image, probeConcurrency]);
+  const probeChartPoints = useMemo(() => {
+    if (!parsedProbe) return [] as Array<{concurrency: number; memory: number}>;
+    const desired = Array.from(new Set([1, 2, 4, 6, 8, 10, 12, probeConcurrency, probeConcurrency + 2, probeConcurrency + 4]))
+      .filter((n) => n > 0)
+      .sort((a, b) => a - b)
+      .slice(0, 9);
+    return desired
+      .map((n) => {
+        const est = estimateRecommendedMemory(parsedProbe, image, n);
+        return est ? {concurrency: n, memory: est.recommended} : null;
+      })
+      .filter((v): v is {concurrency: number; memory: number} => Boolean(v));
+  }, [parsedProbe, image, probeConcurrency]);
+  const probeChartMax = useMemo(() => Math.max(...probeChartPoints.map((p) => p.memory), 1), [probeChartPoints]);
 
   const alerts: React.ReactNode[] = [];
 
@@ -586,7 +612,7 @@ export default function DockerBuilder(): React.ReactElement {
             </div>
           </div>
           <div className={`${styles.row} ${styles.rowNoWrap}`}>
-            <span className={styles.rowLabel}>Path</span>
+            <span className={`${styles.rowLabel} ${styles.rowLabelTip}`} data-tip={TOOLTIPS.corpusPathLabel}>Corpus path</span>
             <div className={styles.inlineField}>
               <input
                 type="text"
@@ -611,10 +637,101 @@ export default function DockerBuilder(): React.ReactElement {
             <textarea value={probeJson} onChange={(e) => setProbeJson(e.target.value)} className={styles.textInput} rows={4} placeholder='{"version":1,"mode":"better",...}' />
           </div>
           {probeEstimate && (
-            <div className={`${styles.alert} ${styles.alertInfo}`}>
-              <span className={styles.alertIcon}>{'\u2139'}</span>
-              <p><strong>Estimated memory:</strong> start at <strong>{probeEstimate.recommended} GB</strong>. Safe range: {probeEstimate.min}-{probeEstimate.max} GB. {probeEstimate.rationale}</p>
-            </div>
+            <>
+              <div className={styles.row}>
+                <span className={`${styles.rowLabel} ${styles.rowLabelTip}`} data-tip="Start with available CPU threads + 2. Example: 12 CPU threads -> concurrency 14. Then adjust based on your corpus and memory budget.">Concurrency</span>
+                <div className={styles.sliderRow}>
+                  <input type="range" min={1} max={32} step={1} value={probeConcurrency} onChange={(e) => setProbeConcurrency(Number(e.target.value))} className={styles.slider} />
+                  <span className={styles.sliderVal}>{probeConcurrency}</span>
+                </div>
+              </div>
+              <div className={styles.estimateCard}>
+                <button type="button" className={styles.estimateCardHeader} onClick={() => setProbeEstimateExpanded((v) => !v)}>
+                  <span className={styles.estimateTitle}>Memory estimate</span>
+                  <span className={styles.estimateSummary}><strong>{probeEstimate.recommended} GB</strong> <span className={styles.estimateRange}>Range {probeEstimate.min}-{probeEstimate.max} GB</span></span>
+                  <span className={styles.estimateHeaderActions}>
+                    <button
+                      type="button"
+                      className={styles.estimateInfoBtn}
+                      aria-label="How memory estimate is computed"
+                      onClick={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        setProbeEstimateInfoOpen((v) => !v);
+                      }}
+                    >
+                      i
+                    </button>
+                    <span className={styles.estimateChevron}>{probeEstimateExpanded ? '▴' : '▾'}</span>
+                  </span>
+                </button>
+                {probeEstimateExpanded && (
+                  <div className={styles.estimateBody}>
+                    {probeEstimateInfoOpen && (
+                      <div className={styles.estimateInfoBox}>
+                        <div className={styles.estimateInfoTitle}>How this estimate is computed</div>
+                        <p>
+                          This is a deterministic heuristic, not a measured runtime profiler. It combines an image baseline with corpus size
+                          and page-count percentiles, then increases the recommendation as concurrency rises.
+                        </p>
+                        <ul className={styles.estimateInfoList}>
+                          <li><strong>Base:</strong> {image === 'full' ? '10 GB for Full image' : '4 GB for CRF image'}</li>
+                          <li><strong>Size factor:</strong> +1 GB per ~8 MB of p95 file size</li>
+                          <li><strong>Page factor:</strong> +1 GB per ~40 pages of p95 page count when available</li>
+                          <li><strong>Concurrency factor:</strong> rises with the selected concurrency (<strong>{probeConcurrency}</strong>)</li>
+                          <li><strong>Safety headroom:</strong> +{image === 'full' ? '2' : '1'} GB</li>
+                        </ul>
+                        <p>
+                          Current corpus inputs: p95 size <strong>{parsedProbe.p95SizeMb} MB</strong>
+                          {parsedProbe.p95Pages != null ? <> , p95 pages <strong>{parsedProbe.p95Pages}</strong></> : null}, sampled files <strong>{parsedProbe.filesSampled}</strong>.
+                        </p>
+                        {probeBreakdown && (
+                          <p>
+                            Equation: <code>max({probeBreakdown.floor}, {probeBreakdown.base} + {probeBreakdown.sizeFactor} + {probeBreakdown.pageFactor} + {probeBreakdown.concurrencyFactor} + {probeBreakdown.safety}) = {probeBreakdown.recommended} GB</code>
+                          </p>
+                        )}
+                        <p>
+                          If your real workload consistently uses much less or much more RAM than shown here, that is a sign the heuristic should be refined.
+                        </p>
+                      </div>
+                    )}
+                    <div className={styles.chartTitle}>Memory by concurrency</div>
+                    <svg className={styles.memoryChart} viewBox={`0 0 520 ${probeChartPoints.length * 26 + 6}`} role="img" aria-label="Memory by concurrency chart">
+                      {probeChartPoints.map((point, idx) => {
+                        const y = idx * 26 + 6;
+                        const barWidth = Math.max(8, (point.memory / probeChartMax) * 320);
+                        const current = point.concurrency === probeConcurrency;
+                        return (
+                          <g key={point.concurrency} transform={`translate(0 ${y})`}>
+                            <text x="0" y="13" className={styles.chartAxisLabel}>{point.concurrency}</text>
+                            <rect x="34" y="1" width={barWidth} height="12" rx="5" className={current ? styles.chartBarActive : styles.chartBar} />
+                            <text x={34 + barWidth + 8} y="13" className={current ? styles.chartValueActive : styles.chartValue}>{point.memory} GB{current ? ' current' : ''}</text>
+                          </g>
+                        );
+                      })}
+                    </svg>
+                    <details className={styles.builderDetails}>
+                      <summary>
+                        <span>Show corpus stats</span>
+                      </summary>
+                      <div className={styles.statsGrid}>
+                        <div><span>Mode</span><strong>{parsedProbe.mode}</strong></div>
+                        <div><span>Recursive</span><strong>{parsedProbe.recursive ? 'Yes' : 'No'}</strong></div>
+                        <div><span>Files sampled</span><strong>{parsedProbe.filesSampled}</strong></div>
+                        <div><span>Avg size</span><strong>{parsedProbe.avgSizeMb} MB</strong></div>
+                        <div><span>P95 size</span><strong>{parsedProbe.p95SizeMb} MB</strong></div>
+                        <div><span>Max size</span><strong>{parsedProbe.maxSizeMb} MB</strong></div>
+                        {'avgPages' in parsedProbe && parsedProbe.avgPages != null && <div><span>Avg pages</span><strong>{parsedProbe.avgPages}</strong></div>}
+                        {'p95Pages' in parsedProbe && parsedProbe.p95Pages != null && <div><span>P95 pages</span><strong>{parsedProbe.p95Pages}</strong></div>}
+                        {'maxPages' in parsedProbe && parsedProbe.maxPages != null && <div><span>Max pages</span><strong>{parsedProbe.maxPages}</strong></div>}
+                        {'filesWithPageCount' in parsedProbe && parsedProbe.filesWithPageCount != null && <div><span>Page counts</span><strong>{parsedProbe.filesWithPageCount}</strong></div>}
+                        {'failedPageReads' in parsedProbe && parsedProbe.failedPageReads != null && <div><span>Failed reads</span><strong>{parsedProbe.failedPageReads}</strong></div>}
+                      </div>
+                    </details>
+                  </div>
+                )}
+              </div>
+            </>
           )}
         </div>
       )}
